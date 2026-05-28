@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ЕМИАС: презентация, симулятор, тест</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+        }
+        body {
+            background: #f0f4f8;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .header {
+            background: #0b3d5f;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .header h1 {
+            font-size: 1.6rem;
+        }
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 250px;
+            background: #0a2e44;
+            color: #e0e9f0;
+            padding: 1rem 0;
+            overflow-y: auto;
+        }
+        .sidebar ul {
+            list-style: none;
+        }
+        .sidebar li {
+            padding: 0.85rem 1.2rem;
+            margin: 0.3rem 0.8rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .sidebar li:hover {
+            background: #1d4b67;
+            color: white;
+        }
+        .sidebar li.active {
+            background: #2c6e8f;
+            color: white;
+            font-weight: 600;
+        }
+        .main {
+            flex: 1;
+            padding: 1.8rem 2rem;
+            overflow-y: auto;
+            background: #f8fafc;
+        }
+        .section {
+            display: none;
+        }
+        .section.active {
+            display: block;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.8rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e2e8f0;
+        }
+        h2 {
+            color: #0b3d5f;
+            margin-bottom: 1rem;
+            border-left: 6px solid #2c6e8f;
+            padding-left: 16px;
+        }
+        .btn {
+            background: #2c6e8f;
+            color: white;
+            border: none;
+            padding: 0.5rem 1.2rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 0.3rem;
+            transition: 0.2s;
+        }
+        .btn:hover {
+            background: #1e5a7a;
+        }
+        .btn.danger {
+            background: #b33a3a;
+        }
+        .btn.danger:hover {
+            background: #8f2c2c;
+        }
+        select,
+        input {
+            padding: 0.5rem;
+            border-radius: 8px;
+            border: 1px solid #bdd3e0;
+            margin-right: 0.5rem;
+        }
+        .flex-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 10px 0;
+        }
+        .patient-list {
+            background: white;
+            border-radius: 8px;
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            border: 1px solid #ccc;
+        }
+        .quiz-option {
+            display: block;
+            background: #f1f6fb;
+            margin: 6px 0;
+            padding: 10px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        .quiz-option:hover {
+            border-color: #2c6e8f;
+        }
+        .quiz-option input {
+            margin-right: 10px;
+        }
+        .correct-highlight {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+        .wrong-highlight {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏥 ЕМИАС: полный учебный комплекс "Стационар"</h1>
+        <span style="background:#1e5a7a; padding:0.5rem 1.2rem; border-radius:30px;">👤 Иванова А.С.</span>
+    </div>
+    <div class="container">
+        <div class="sidebar">
+            <ul>
+                <li class="active" data-section="presentation">🎓 Презентация</li>
+                <li data-section="principles">📋 Общие принципы</li>
+                <li data-section="placement">🛏️ Размещение</li>
+                <li data-section="movement">🔄 Движение</li>
+                <li data-section="report">📊 Сводка 007/у</li>
+                <li data-section="tablet">📱 Планшет</li>
+                <li data-section="anthropometry">📏 Антропометрия</li>
+                <li data-section="marks">✅ Отметки</li>
+                <li data-section="temperature">🌡️ Температура</li>
+                <li data-section="quiz">📝 Тест (40 вопр.)</li>
+            </ul>
+        </div>
+        <div class="main" id="mainContent">
+            <!-- Секции будут добавлены динамически -->
+        </div>
+    </div>
+    <script>
+        (function() {
+            // ---------- Глобальное состояние симуляции ----------
+            const state = {
+                patients: [
+                    { id: 1, name: 'Иванов И.И.', age: 45, diagnosis: 'Грипп', department: 'Терапия', room: null, bed: null, status: 'unplaced', movements: [], manipulations: [], anthropometry: [], temperatures: {} },
+                    { id: 2, name: 'Петрова А.С.', age: 32, diagnosis: 'Аппендицит', department: 'Хирургия', room: null, bed: null, status: 'unplaced', movements: [], manipulations: [], anthropometry: [], temperatures: {} },
+                    { id: 3, name: 'Сидоров В.К.', age: 58, diagnosis: 'Гипертония', department: 'Терапия', room: 1, bed: 1, status: 'placed', movements: [{ date: '01.06.2026 10:00', text: 'Поступил, размещён в палату 1 койка 1' }], manipulations: [], anthropometry: [], temperatures: {} }
+                ],
+                departments: ['Терапия', 'Хирургия', 'Кардиология'],
+                rooms: { 'Терапия': [1, 2, 3], 'Хирургия': [4, 5], 'Кардиология': [6] }
+            };
+            function getUnplaced() { return state.patients.filter(p => p.status === 'unplaced'); }
+            function getPlaced() { return state.patients.filter(p => p.status === 'placed'); }
+            function getPatientById(id) { return state.patients.find(p => p.id === id); }
+
+            // ---------- Инициализация разделов ----------
+            function createSections() {
+                const main = document.getElementById('mainContent');
+                const ids = ['presentation', 'principles', 'placement', 'movement', 'report', 'tablet', 'anthropometry', 'marks', 'temperature', 'quiz'];
+                ids.forEach(id => {
+                    const div = document.createElement('div');
+                    div.id = id;
+                    div.className = 'section';
+                    if (id === 'presentation') div.classList.add('active');
+                    main.appendChild(div);
+                });
+            }
+
+            // ---------- Презентация через Google Диск ----------
+            function renderPresentation() {
+                const fileId = '10HqAhWuRetUCxdXQt7HXAF5ukLLf4OLG';
+                const embedUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+                document.getElementById('presentation').innerHTML = `
+                <div class="card">
+                    <h2>🎓 Презентация (PDF)</h2>
+                    <iframe src="${embedUrl}" width="100%" height="600px" frameborder="0" allowfullscreen></iframe>
+                    <p style="margin-top:10px;">Если презентация не отображается, откройте <a href="https://drive.google.com/file/d/${fileId}/view?usp=sharing" target="_blank">ссылку</a> в новой вкладке.</p>
+                </div>`;
+            }
+
+            // ---------- Разделы симулятора ----------
+            function renderPrinciples() {
+                document.getElementById('principles').innerHTML = `
+                <div class="card">
+                    <h2>Общие принципы</h2>
+                    <p>🔐 Вход только под своим логином/паролем. Все действия фиксируются.</p>
+                    <div class="flex-row" style="background:#f0f5fa; padding:1rem; border-radius:12px;">
+                        <div style="background:#b0c7d8; width:100px; border-radius:8px; padding:8px;">Меню</div>
+                        <div style="flex:1; background:white; border:1px solid #b0c7d8; border-radius:6px; padding:8px;">Список пациентов</div>
+                    </div>
+                </div>`;
+            }
+
+            function renderPlacement() {
+                const unplaced = getUnplaced();
+                document.getElementById('placement').innerHTML = `
+                <div class="card">
+                    <h2>🛏️ Размещение пациента</h2>
+                    <div><strong>Неразмещённые:</strong> ${unplaced.map(p => `
+                        <div class="patient-list flex-row" style="justify-content:space-between">
+                            <span>${p.name} (${p.department})</span>
+                            <button class="btn" onclick="window.placePatient(${p.id})">Разместить</button>
+                        </div>`).join('') || 'Все размещены'}</div>
+                    <div id="placementForm" class="flex-row"></div>
+                </div>`;
+                window.placePatient = function(id) {
+                    const p = getPatientById(id);
+                    const rooms = state.rooms[p.department] || [];
+                    document.getElementById('placementForm').innerHTML = `
+                        <select id="roomSelect">${rooms.map(r => `<option value="${r}">Палата ${r}</option>`).join('')}</select>
+                        <select id="bedSelect">${[1,2,3,4,5].map(b => `<option value="${b}">Койка ${b}</option>`).join('')}</select>
+                        <button class="btn" onclick="window.confirmPlacement(${id})">Подтвердить</button>`;
+                };
+                window.confirmPlacement = function(id) {
+                    const p = getPatientById(id);
+                    p.room = parseInt(document.getElementById('roomSelect').value);
+                    p.bed = parseInt(document.getElementById('bedSelect').value);
+                    p.status = 'placed';
+                    p.movements.push({ date: new Date().toLocaleString('ru-RU'), text: `Размещён в палату ${p.room} койка ${p.bed}` });
+                    updateAll();
+                };
+            }
+
+            function renderMovement() {
+                const placed = getPlaced();
+                document.getElementById('movement').innerHTML = `
+                <div class="card">
+                    <h2>🔄 Движение пациента</h2>
+                    ${placed.map(p => `
+                        <div class="patient-list">
+                            <strong>${p.name}</strong> (${p.department}, палата ${p.room}, койка ${p.bed})
+                            <div>📋 ${p.movements.slice(-2).map(m => m.text).join('; ')}</div>
+                            <button class="btn" onclick="window.transferRoom(${p.id})">Перевести в палату</button>
+                            <button class="btn" onclick="window.transferDept(${p.id})">Перевести в отделение</button>
+                        </div>`).join('') || 'Нет размещённых пациентов'}
+                </div>`;
+                window.transferRoom = function(id) {
+                    const p = getPatientById(id);
+                    const rooms = state.rooms[p.department] || [];
+                    const newRoom = prompt(`Палаты: ${rooms.join(', ')}`, p.room);
+                    if (newRoom && rooms.includes(parseInt(newRoom))) {
+                        const bed = prompt('Койка', p.bed);
+                        p.room = parseInt(newRoom);
+                        p.bed = parseInt(bed) || p.bed;
+                        p.movements.push({ date: new Date().toLocaleString('ru-RU'), text: `Переведён в палату ${newRoom} койка ${bed}` });
+                        updateAll();
+                    }
+                };
+                window.transferDept = function(id) {
+                    const p = getPatientById(id);
+                    const dept = prompt('Отделение (Терапия, Хирургия, Кардиология)', p.department);
+                    if (state.departments.includes(dept)) {
+                        p.department = dept;
+                        p.room = null; p.bed = null; p.status = 'unplaced';
+                        p.movements.push({ date: new Date().toLocaleString('ru-RU'), text: `Переведён в отделение ${dept}` });
+                        updateAll();
+                    }
+                };
+            }
+
+            function renderReport() {
+                const totalBeds = Object.values(state.rooms).flat().length;
+                const placed = getPlaced().length;
+                document.getElementById('report').innerHTML = `
+                <div class="card">
+                    <h2>📊 Сводка 007/у</h2>
+                    <p>Всего коек: ${totalBeds}, занято: ${placed}, свободно: ${totalBeds - placed}</p>
+                    <button class="btn" onclick="alert('Печать (имитация)')">Печать</button>
+                </div>`;
+            }
+
+            function renderTablet() {
+                document.getElementById('tablet').innerHTML = `
+                <div class="card">
+                    <h2>📱 Планшет</h2>
+                    ${getPlaced().map(p => `
+                        <div style="background:white; border-radius:12px; padding:10px; margin:5px 0; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+                            ${p.name} (палата ${p.room}) 🟢 анализы готовы
+                        </div>`).join('')}
+                </div>`;
+            }
+
+            function renderAnthropometry() {
+                const placed = getPlaced();
+                document.getElementById('anthropometry').innerHTML = `
+                <div class="card">
+                    <h2>📏 Антропометрия</h2>
+                    <select id="anthropPatient">${placed.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
+                    <div class="flex-row">
+                        <input id="heightInput" placeholder="Рост (см)" type="number" step="0.1">
+                        <input id="weightInput" placeholder="Масса (кг)" type="number" step="0.1">
+                        <button class="btn" onclick="window.addAnthrop()">Добавить</button>
+                    </div>
+                    <div class="patient-list" id="anthropData"></div>
+                </div>`;
+                window.addAnthrop = function() {
+                    const id = parseInt(document.getElementById('anthropPatient').value);
+                    const p = getPatientById(id);
+                    const h = document.getElementById('heightInput').value;
+                    const w = document.getElementById('weightInput').value;
+                    if (h && w) {
+                        p.anthropometry.push({ date: new Date().toLocaleDateString('ru-RU'), height: h, weight: w });
+                        updateAll();
+                    }
+                };
+                updateAnthropData();
+            }
+            function updateAnthropData() {
+                const div = document.getElementById('anthropData');
+                if (div) div.innerHTML = getPlaced().map(p => `<div>${p.name}: ${p.anthropometry.map(a => `${a.date}: ${a.height}см, ${a.weight}кг`).join('; ') || 'нет'}</div>`).join('');
+            }
+
+            function renderMarks() {
+                const placed = getPlaced();
+                document.getElementById('marks').innerHTML = `
+                <div class="card">
+                    <h2>✅ Отметки</h2>
+                    <select id="manipPatient">${placed.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
+                    <select id="manipType"><option>Смена белья</option><option>Осмотр на педикулёз</option></select>
+                    <button class="btn" onclick="window.addManip()">Выполнить</button>
+                    <div class="patient-list" id="manipData"></div>
+                </div>`;
+                window.addManip = function() {
+                    const id = parseInt(document.getElementById('manipPatient').value);
+                    const p = getPatientById(id);
+                    p.manipulations.push({ date: new Date().toLocaleString('ru-RU'), type: document.getElementById('manipType').value });
+                    updateAll();
+                };
+                updateManipData();
+            }
+            function updateManipData() {
+                const div = document.getElementById('manipData');
+                if (div) div.innerHTML = getPlaced().map(p => `<div>${p.name}: ${p.manipulations.map(m => m.type).join('; ') || 'нет'}</div>`).join('');
+            }
+
+            function renderTemperature() {
+                const placed = getPlaced();
+                document.getElementById('temperature').innerHTML = `
+                <div class="card">
+                    <h2>🌡️ Температурный лист</h2>
+                    <select id="tempPatient">${placed.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
+                    <div class="flex-row">
+                        <input type="date" id="tempDate"><input type="time" id="tempTime" value="08:00">
+                        <input id="tempValue" placeholder="Темп." type="number" step="0.1">
+                        <button class="btn" onclick="window.addTemp()">Записать</button>
+                    </div>
+                    <div class="patient-list" id="tempData"></div>
+                </div>`;
+                window.addTemp = function() {
+                    const id = parseInt(document.getElementById('tempPatient').value);
+                    const p = getPatientById(id);
+                    const key = document.getElementById('tempDate').value + ' ' + document.getElementById('tempTime').value;
+                    const val = document.getElementById('tempValue').value;
+                    if (key && val) { p.temperatures[key] = val; updateAll(); }
+                };
+                updateTempData();
+            }
+            function updateTempData() {
+                const div = document.getElementById('tempData');
+                if (div) div.innerHTML = getPlaced().map(p => {
+                    const entries = Object.entries(p.temperatures).map(([k, v]) => `${k}: ${v}°C`).join('; ');
+                    return `<div>${p.name}: ${entries || 'нет'}</div>`;
+                }).join('');
+            }
+
+            function updateAll() {
+                renderPlacement(); renderMovement(); renderReport(); renderTablet();
+                renderAnthropometry(); updateAnthropData();
+                renderMarks(); updateManipData();
+                renderTemperature(); updateTempData();
+            }
+
+            // ---------- Тест (40 вопросов) ----------
+            function renderQuiz() {
+                const mcQuestions = [
+                    { text: "1. Раздел меню со списками пациентов:", options: ["Отчёты", "Пациенты стационара", "Настройки", "Журналы"], correct: 1 },
+                    { text: "2. Неразмещённые пациенты находятся в:", options: ["Выписанные", "Температурный лист", "Приёмное отделение / Неразмещённые", "Антропометрия"], correct: 2 },
+                    { text: "3. Свободные койки помечаются цветом:", options: ["Серым", "Зелёным", "Красным", "Синим"], correct: 1 },
+                    { text: "4. После размещения пациент:", options: ["Остаётся", "Переносится в архив", "Появляется в списке отделения", "Удаляется"], correct: 2 },
+                    { text: "5. Форма 007/у находится в:", options: ["Журналы", "Отчёты → Стационар → 007/у", "Настройки", "Выписка"], correct: 1 },
+                    { text: "6. Что не указывается в 007/у?", options: ["Дата", "Отделение", "Профиль коек", "Температура"], correct: 3 },
+                    { text: "7. Кнопка перевода в палату:", options: ["Выписать", "Перевести в палату", "Редактировать", "Создать"], correct: 1 },
+                    { text: "8. После межотделенческого перевода нужно:", options: ["Выписать", "Удалить историю", "Разместить на койку", "Печать"], correct: 2 },
+                    { text: "9. Результат получен (планшет):", options: ["Красный", "Жёлтый", "Зелёный", "Серый"], correct: 2 },
+                    { text: "10. Перемещения видны:", options: ["В отчётах", "В карточке пациента", "В настройках", "В журнале выписки"], correct: 1 },
+                    { text: "11. Рост и масса вносятся в:", options: ["Темп.лист", "Антропометрия", "Манипуляции", "Движение"], correct: 1 },
+                    { text: "12. Динамика массы – это:", options: ["Удаление", "Добавление новых записей", "Редактирование", "Бумажный график"], correct: 1 },
+                    { text: "13. Смена белья фиксируется в:", options: ["Диагнозы", "Манипуляции/уход", "Антропометрия", "007/у"], correct: 1 },
+                    { text: "14. При осмотре на педикулёз указывают:", options: ["Врача", "Дату, время, исполнителя", "Палату", "Температуру"], correct: 1 },
+                    { text: "15. Температура вносится:", options: ["Через окно диагноза", "Двойной клик по ячейке", "Скан", "Планшет"], correct: 1 },
+                    { text: "16. В температурный лист также вносят:", options: ["Рост", "Пульс, АД, дыхание", "Смену белья", "Дату"], correct: 1 },
+                    { text: "17. Ошибочную температуру:", options: ["Удалить лист", "Изменить и добавить комментарий", "Перезагрузить", "Звонить"], correct: 1 },
+                    { text: "18. Действия медсестры:", options: ["Только выписка", "Только переводы", "Все фиксируются", "Никакие"], correct: 2 },
+                    { text: "19. Передавать логин:", options: ["Да", "Да, экстренно", "Нет, нарушение", "Можно"], correct: 2 },
+                    { text: "20. Экспорт 007/у:", options: ["PDF", "Word, Excel, PDF", "Excel", "Печать"], correct: 1 },
+                    { text: "21. После перевода в другое отделение пациент:", options: ["Остаётся", "Исчезает из списка отделения", "Выписывается", "В архив"], correct: 1 },
+                    { text: "22. Кнопка для перевода в палату:", options: ["Выписать", "Перевести в палату", "Редактировать", "Направление"], correct: 1 },
+                    { text: "23. Что НЕ отображается в сводке 007/у?", options: ["Занято коек", "Свободно коек", "Температура пациентов", "Поступило"], correct: 2 },
+                    { text: "24. Статус «Назначено» на планшете:", options: ["Зелёный", "Жёлтый", "Красный", "Синий"], correct: 1 },
+                    { text: "25. Для динамики массы:", options: ["Редактировать", "Добавлять новые записи", "Удалять", "Бумажный"], correct: 1 },
+                    { text: "26. Осмотр на педикулёз – это:", options: ["Диагноз", "Манипуляция", "Антропометрия", "Лаб."], correct: 1 },
+                    { text: "27. Ошибка в температуре:", options: ["Удалить", "Изменить + комментарий", "Оставить", "Новый пациент"], correct: 1 },
+                    { text: "28. Какое действие НЕ фиксируется?", options: ["Просмотр", "Размещение", "Перевод", "Все фиксируются"], correct: 3 },
+                    { text: "29. После межотделенческого перевода:", options: ["Выписка", "Удаление", "Размещение в новом отделении", "Перезагрузка"], correct: 2 },
+                    { text: "30. История перемещений – в:", options: ["007/у", "Карточке пациента", "Темп.листе", "Настройках"], correct: 1 }
+                ];
+                const seqTasks = [
+                    { desc: "31. Размещение: 1) Найти, 2) Разместить, 3) Выбрать койку, 4) Сохранить", items: ["Нажать Сохранить","Выбрать койку","Найти пациента","Нажать Разместить"], correctOrder: [4,3,1,2] },
+                    { desc: "32. Перевод в палату: 1) Найти, 2) Перевести в палату, 3) Дата, 4) Койка, 5) Сохранить", items: ["Сохранить","Выбрать койку","Перевести в палату","Найти пациента","Указать дату"], correctOrder: [4,3,5,2,1] },
+                    { desc: "33. Антропометрия: 1) История, 2) Вкладка, 3) Добавить, 4) Внести, 5) Сохранить", items: ["Сохранить","Открыть вкладку","Добавить","Внести","Открыть историю"], correctOrder: [5,2,3,4,1] },
+                    { desc: "34. Смена белья: 1) Манипуляции, 2) Добавить, 3) Выбрать, 4) Дата, 5) Сохранить", items: ["Выбрать","Манипуляции","Добавить","Дата","Сохранить"], correctOrder: [2,3,1,4,5] },
+                    { desc: "35. Температура: 1) Лист, 2) Клик, 3) Ввод, 4) Сохранить, 5) Исправить", items: ["Клик","Лист","Ввод","Сохранить","Исправить"], correctOrder: [2,1,3,4,5] }
+                ];
+                const matchTasks = [
+                    { desc: "36. Действие – раздел", left: ["Размещение","007/у","Температура","Педикулёз"], right: ["А. Отчёты 007/у","Б. Неразмещённые","В. Манипуляции","Г. Темп.лист"], correct: ["Б","А","Г","В"] },
+                    { desc: "37. Статус – цвет", left: ["Назначено","Дообработка","Готово"], right: ["А. Красный","Б. Зелёный","В. Жёлтый"], correct: ["В","А","Б"] },
+                    { desc: "38. Кнопка – операция", left: ["Перевод в отд.","Размещение","Печать темп.","Антропометрия"], right: ["А. Разместить","Б. Перевод в отд.","В. Сохранить","Г. Печать"], correct: ["Б","А","Г","В"] },
+                    { desc: "39. Интерфейс – описание", left: ["Верх","Меню","Центр","Право"], right: ["А. Дерево","Б. ФИО, Выход","В. Списки","Г. Кнопки"], correct: ["Б","А","В","Г"] },
+                    { desc: "40. Действие – 007/у", left: ["Перевод","Выписка","Поступление","Размещение внутри"], right: ["А. Выписано","Б. Движение","В. Поступило","Г. Занятость"], correct: ["Б","А","В","Г"] }
+                ];
+
+                let html = '<div class="card"><h2>📝 Итоговый тест (40 заданий)</h2>';
+                mcQuestions.forEach((q, i) => {
+                    html += `<div class="quiz-question">${q.text}</div>`;
+                    q.options.forEach((opt, j) => {
+                        html += `<label class="quiz-option"><input type="radio" name="mc${i}" value="${j}"> ${opt}</label>`;
+                    });
+                });
+                seqTasks.forEach((t, i) => {
+                    html += `<div class="quiz-question">${t.desc}</div>`;
+                    t.items.forEach((item, j) => {
+                        html += `<div class="flex-row"><span>${j+1}. ${item}</span> <select data-seq="${i}" data-item="${j}"><option value="">--</option>${[1,2,3,4,5].slice(0,t.items.length).map(n => `<option value="${n}">${n}</option>`).join('')}</select></div>`;
+                    });
+                });
+                matchTasks.forEach((t, i) => {
+                    html += `<div class="quiz-question">${t.desc}</div>`;
+                    t.left.forEach((left, j) => {
+                        html += `<div class="flex-row"><span>${left}</span> <select data-match="${i}" data-left="${j}"><option value="">--</option>${t.right.map(r => `<option value="${r[0]}">${r}</option>`).join('')}</select></div>`;
+                    });
+                });
+                html += `<button class="btn" onclick="window.checkQuiz()" style="margin-top:1.5rem;">Проверить тест</button><div id="quizResult" style="margin-top:1rem;"></div></div>`;
+                document.getElementById('quiz').innerHTML = html;
+
+                window.checkQuiz = function() {
+                    let score = 0;
+                    for (let i = 0; i < 30; i++) {
+                        const selected = document.querySelector(`input[name="mc${i}"]:checked`);
+                        if (selected && parseInt(selected.value) === mcQuestions[i].correct) score++;
+                    }
+                    seqTasks.forEach((t, i) => {
+                        let correct = true;
+                        t.items.forEach((_, j) => {
+                            const sel = document.querySelector(`select[data-seq="${i}"][data-item="${j}"]`);
+                            if (!sel || parseInt(sel.value) !== t.correctOrder[j]) correct = false;
+                        });
+                        if (correct) score++;
+                    });
+                    matchTasks.forEach((t, i) => {
+                        let ok = true;
+                        t.left.forEach((_, j) => {
+                            const sel = document.querySelector(`select[data-match="${i}"][data-left="${j}"]`);
+                            if (!sel || sel.value !== t.correct[j]) ok = false;
+                        });
+                        if (ok) score++;
+                    });
+                    const total = 40;
+                    const percent = (score / total) * 100;
+                    let grade, reaction;
+                    if (percent >= 90) { grade = 5; reaction = '🌟 Отлично!'; }
+                    else if (percent >= 80) { grade = 4; reaction = '👍 Хорошо!'; }
+                    else if (percent >= 70) { grade = 3; reaction = '📚 Удовлетворительно.'; }
+                    else { grade = 2; reaction = '😞 Неудовлетворительно.'; }
+                    document.getElementById('quizResult').innerHTML = `<strong>Оценка ${grade}</strong> (${score}/${total}, ${Math.round(percent)}%)<br>${reaction}`;
+                    for (let i = 0; i < 30; i++) {
+                        const correctIdx = mcQuestions[i].correct;
+                        document.querySelectorAll(`input[name="mc${i}"]`).forEach((inp, idx) => {
+                            const label = inp.closest('.quiz-option');
+                            if (label) {
+                                label.classList.remove('correct-highlight','wrong-highlight');
+                                if (idx === correctIdx) label.classList.add('correct-highlight');
+                                else if (inp.checked) label.classList.add('wrong-highlight');
+                            }
+                        });
+                    }
+                };
+            }
+
+            // ---------- Навигация ----------
+            function setupNav() {
+                document.querySelectorAll('.sidebar li').forEach(li => {
+                    li.addEventListener('click', function() {
+                        document.querySelectorAll('.sidebar li').forEach(l => l.classList.remove('active'));
+                        this.classList.add('active');
+                        const id = this.dataset.section;
+                        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+                        document.getElementById(id).classList.add('active');
+                        if (id === 'placement') renderPlacement();
+                        if (id === 'movement') renderMovement();
+                        if (id === 'report') renderReport();
+                        if (id === 'tablet') renderTablet();
+                        if (id === 'anthropometry') renderAnthropometry();
+                        if (id === 'marks') renderMarks();
+                        if (id === 'temperature') renderTemperature();
+                    });
+                });
+            }
+
+            // ---------- Старт ----------
+            window.onload = function() {
+                createSections();
+                renderPresentation();
+                renderPrinciples();
+                renderPlacement();
+                renderMovement();
+                renderReport();
+                renderTablet();
+                renderAnthropometry();
+                renderMarks();
+                renderTemperature();
+                renderQuiz();
+                setupNav();
+            };
+        })();
+    </script>
+</body>
+</html>
